@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -202,7 +203,7 @@ public class DataBaseUtilities{
 		return allMessages;
 	}
 	
-	public Map<String, Map<String, Object>> retrieveMostPopularFollowers(){
+	public  Map<String, Map<String, List<Object>>> retrieveMostPopularFollowers(){
 		String sql = "SELECT u1.name as user_name, f.user_id as user_id, u.user_id as follower_id,  u2.name as follower_name, count(f.follower_id) as number_of_followers "
 					+ "FROM "
 					+ "followers as u LEFT OUTER JOIN followers as f  "
@@ -214,35 +215,56 @@ public class DataBaseUtilities{
 					+ "WHERE f.user_id IN (SELECT id FROM users) "
 					+ "GROUP BY user_id, follower_id";
 
-		Map<String, Map<String, Object>> followers = jdbc.query(sql, new ResultSetExtractor<Map<String, Map<String, Object>>>() {
+		Map<String, Map<String, List<Object>>> followers = jdbc.query(sql, new ResultSetExtractor<Map<String, Map<String, List<Object>>>>() {
 				@Override
-				public Map<String, Map<String, Object>> extractData(ResultSet rs) throws SQLException, DataAccessException {
-					Map<String, Map<String, Object>> followers = new HashMap<String, Map<String, Object>>();
+				public Map<String, Map<String, List<Object>>> extractData(ResultSet rs) throws SQLException, DataAccessException {
+					Map<String, Map<String, List<Object>>> followers = new HashMap<String, Map<String, List<Object>>>();
 					while(rs.next()){
 						Map<String, Object> row = new HashMap<String, Object>();
+						Map<String, List<Object>> all = new HashMap<String, List<Object>>();
+						List<Object> list_of_followers = new ArrayList<Object>();
 						String user_name = rs.getString("user_name");
 						int number = rs.getInt("number_of_followers");
 						if(followers.containsKey(user_name)){
-							row = followers.get(user_name);
-							if(Integer.parseInt(row.get("number_of_followers").toString()) < number){
-								row.put("user_id", rs.getInt("user_id"));
-								row.put("follower_id", rs.getInt("follower_id"));
-								row.put("popular_follower_name", rs.getString("follower_name"));
-								row.put("number_of_followers", number);
-								followers.put(user_name, row);
+							all = followers.get(user_name);
+							if(all.containsKey(Integer.toString(number))){
+								list_of_followers = all.get(Integer.toString(number));
+								Map<String, Object> new_memeber = new HashMap<String, Object>();
+								new_memeber.put("user_id", rs.getInt("user_id"));
+								new_memeber.put("follower_id", rs.getInt("follower_id"));
+								new_memeber.put("popular_follower_name", rs.getString("follower_name"));
+								new_memeber.put("number_of_followers", number);
+								list_of_followers.add(new_memeber);
+								all.put(Integer.toString(number), list_of_followers);
+							}else{
+								Set<String> keys = all.keySet();
+								for(String key:keys){
+									if(Integer.parseInt(key) < number){
+										all.clear();
+										list_of_followers.clear();
+										row.put("user_id", rs.getInt("user_id"));
+										row.put("follower_id", rs.getInt("follower_id"));
+										row.put("popular_follower_name", rs.getString("follower_name"));
+										row.put("number_of_followers", number);
+										list_of_followers.add(row);
+										all.put(Integer.toString(number), list_of_followers);
+									}
+								}
 							}	
 						}else{
 							row.put("user_id", rs.getInt("user_id"));
 							row.put("follower_id", rs.getInt("follower_id"));
 							row.put("popular_follower_name", rs.getString("follower_name"));
 							row.put("number_of_followers", number);
-							followers.put(user_name, row);
+							list_of_followers.add(row);
+							all.put(Integer.toString(number), list_of_followers);
 						}
+						followers.put(user_name, all);
 					}
 					return followers;
 				}
 			});
 		
 		return followers;
-	} 
+	}
 }

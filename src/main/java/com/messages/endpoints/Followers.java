@@ -102,7 +102,7 @@ public class Followers{
 	@ResponseBody
 	public ResponseEntity getAllPopularFollower(){
 		try{
-			Map<String, Map<String, Object>> popular_followers = utility.retrieveMostPopularFollowers();
+			Map<String, Map<String, List<Object>>> popular_followers = utility.retrieveMostPopularFollowers();
 			JSONObject follower_json = new JSONObject(popular_followers);
 			return new ResponseEntity(follower_json, HttpStatus.OK);
 		}catch(NumberFormatException n){
